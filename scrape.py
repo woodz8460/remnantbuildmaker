@@ -3,6 +3,7 @@ import time
 import bs4
 import requests
 import os
+import re
 
 json_folder_url = "./src/data/"
 base_url = 'https://remnant2.wiki.fextralife.com'
@@ -136,6 +137,42 @@ def get_archetype_data():
             additional_archetype_info["archetypeTrait"] = archetype_trait_name
             additional_archetype_info["archetypeTraitHref"] = archetype_trait_href
 
+        archetype_skills = []
+        archetype_skills_info = archetype_soup.find("h3", string=re.compile('Skills in Remnant'), attrs= { "class": "bonfire"}).find_next_sibling("div")
+        if archetype_skills_info:
+            archetype_skills_info = archetype_skills_info.find_all("div", class_="col-sm-4")
+            for j, archetypeSkill in enumerate(archetype_skills_info):
+                title = get_title(archetypeSkill)
+                img = archetypeSkill.find("img")
+                skill_name = ''
+                skill_img = ''
+                skill_href = ''
+                if title:
+                    skill_name = title.getText().strip()
+                    skill_href = title.get("href")
+                if img:
+                    skill_img = img.get("src")
+
+                archetype_skill_description = archetypeSkill.find("p")
+                skill_description = ''
+                if archetype_skill_description:
+                    for span in archetype_skill_description.find_all("span"):
+                        span.unwrap()
+                    for br in archetype_skill_description.find_all("br"):
+                        br.replace_with("\n")
+                    skill_description = archetype_skill_description.get_text()
+                
+                skill_payload = {
+                    "skillName": skill_name,
+                    "skillHref": skill_href,
+                    "skillFullHref": f'{base_url}{skill_href}',
+                    "skillImageLinkPath": skill_img,
+                    "skillImageLinkFullPath": f'{base_url}{skill_img}',
+                    "skillDescription": skill_description
+                }
+
+                archetype_skills.append(skill_payload)
+
         archetype_payload = {
             "archetypeId": i,
             "archetypeName": archetype_name,
@@ -144,9 +181,10 @@ def get_archetype_data():
             "archetypeImageLinkPath": archetype_img,
             "archetypeImageLinkFullPath": f'{base_url}{archetype_img}',
             "archetypeDescription": archetype_description,
+            "archetypeSkills": archetype_skills,
             "archetypeInfo": additional_archetype_info
         }
-        print(f"Currently on archetype {i + 1} / {len(elements)}, item name being {archetype_name}")
+        print(f"Currently on archetype {i + 1} / {len(elements)}, archetype name being {archetype_name}")
 
         time.sleep(1)
         archetypes.append(archetype_payload)
@@ -373,12 +411,12 @@ def get_remnant_data():
         with open(item_filename, 'w+') as f:
             json.dump(items, f)
 
-print(f"-----FETCHING TRAIT DATA-----")
-get_trait_data()
+#print(f"-----FETCHING TRAIT DATA-----")
+#get_trait_data()
 print(f"-----FETCHING CLASS DATA-----")
 get_archetype_data()
-print(f"-----FETCHING ARMOR DATA-----")
-get_armor_data()
-print(f"---FETCHING REMAINING DATA---")
-get_remnant_data()
+#print(f"-----FETCHING ARMOR DATA-----")
+#get_armor_data()
+#print(f"---FETCHING REMAINING DATA---")
+#get_remnant_data()
 print("-------------DONE-------------")
